@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZUOZHENZI HUANG | 产品策划云端名片</title>
+    
+    <!-- ✨ 增加底层 DNS 预解析和预连接，压榨加速节点的加载速度 -->
+    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin>
+    <link rel="dns-prefetch" href="https://fastly.jsdelivr.net">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <style>
+        /* ================= 核心系统规范 (Design System) ================= */
+        @media (pointer: fine) {
+            body:not(.show-native-cursor) * { cursor: none !important; }
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f9; overflow-x: hidden; color: #1a1a1a; margin: 0; }
+        
+        /* 隐藏全局与模态框的滚动条 */
+        .hide-scrollbar::-webkit-scrollbar, .project-modal::-webkit-scrollbar { display: none; }
+        .hide-scrollbar, .project-modal { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ✨ 统一的玻璃拟物化组件规范 */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.4); 
+            backdrop-filter: blur(24px); 
+            -webkit-backdrop-filter: blur(24px); 
+            border: 1px solid rgba(255, 255, 255, 0.7); 
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.05); 
+            border-radius: 2rem; 
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.5); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.8); 
+            border-radius: 9999px;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03); 
+        }
+
+        .rounded-inner { border-radius: 1.25rem; }
+
+        /* ✨ 数据与核心名词高亮交互 (Data & Noun Highlight) */
+        .data-highlight {
+            display: inline-block;
+            font-weight: 900;
+            color: #1a1a1a;
+            transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            cursor: default;
+            padding: 0 0.125rem;
+            position: relative;
+            z-index: 10;
+        }
+        .data-highlight:hover { transform: scale(1.08) translateY(-2px); }
+        .hover-color-p1:hover { color: #1F53FF; text-shadow: 0 4px 12px rgba(31,83,255,0.25); }
+        .hover-color-p2:hover { color: #7aaacc; text-shadow: 0 4px 12px rgba(122,170,204,0.25); }
+        .hover-color-p3:hover { color: #5ba18c; text-shadow: 0 4px 12px rgba(91,161,140,0.25); }
+        .hover-color-p4:hover { color: #d4af37; text-shadow: 0 4px 12px rgba(212,175,55,0.25); }
+
+        /* ✨ 修复长图切片拼接可能出现的 1px 细缝 */
+        .seamless-slice {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin-top: -1px;
+            position: relative;
+            z-index: 1;
+        }
+        .seamless-slice:first-child { margin-top: 0; }
+
+        /* ✨ 全局底色弥散光斑动画 */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 15s infinite alternate ease-in-out; filter: blur(120px); opacity: 0.4; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+        .animation-delay-6000 { animation-delay: 6s; }
+
+        .accent-glow { position: absolute; width: 180px; height: 180px; filter: blur(60px); opacity: 0.5; z-index: 0; border-radius: 50%; pointer-events: none; }
+
+        /* ================= 光标系统 ================= */
+        #custom-cursor {
+            position: fixed; top: 0; left: 0; 
+            width: 8px; height: 8px;
+            background-color: #1a1a1a; 
+            border-radius: 50%;
+            pointer-events: none; z-index: 99999;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s cubic-bezier(0.25, 1, 0.5, 1), 
+                        height 0.3s cubic-bezier(0.25, 1, 0.5, 1), 
+                        background-color 0.3s, border 0.3s, box-shadow 0.3s;
+        }
+        #custom-cursor.hover-focus { 
+            width: 48px; height: 48px;
+            background-color: transparent;
+            border: 2px solid rgba(31, 83, 255, 0.6);
+        }
+        #custom-cursor.text-focus { 
+            width: 56px; height: 56px;
+            background-color: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+
+        /* 封面文字悬停特效 */
+        .text-trigger {
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-origin: right center;
+        }
+        .text-trigger:hover { transform: scale(1.08) translateX(-0.5cqi); }
+        .text-trigger p { transition: text-shadow 0.4s ease, color 0.4s ease; }
+        .text-trigger:hover p { text-shadow: 0 4px 20px rgba(255, 255, 255, 1) !important; color: #ffffff; }
+
+        /* ================= 封面设计交互组件 ================= */
+        .canvas-container {
+            width: 100vw;
+            max-width: 177.77vh; 
+            aspect-ratio: 1600 / 900;
+            position: relative;
+            background-color: transparent;
+            overflow: hidden;
+            container-type: inline-size; 
+        }
+
+        .glow-blob-hero {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(8cqi);
+            z-index: 0;
+            opacity: 0.6;
+            animation: pulse-hero 12s infinite alternate ease-in-out;
+        }
+        .glow-blue-hero { background: #81a4ff; width: 35cqi; height: 35cqi; top: 25%; left: 45%; }
+        .glow-purple-hero { background: #b0a3ff; width: 25cqi; height: 25cqi; bottom: 15%; right: 25%; animation-delay: -3s; }
+        .glow-mint-hero { background: #9be9d4; width: 30cqi; height: 30cqi; top: 15%; right: 5%; animation-delay: -6s; }
+
+        @keyframes pulse-hero {
+            0% { transform: scale(1) translate(0, 0); }
+            100% { transform: scale(1.15) translate(-2cqi, 2cqi); }
+        }
+
+        .glass-cube {
+            position: absolute;
+            width: calc(157 / 1600 * 100%);
+            height: calc(157 / 900 * 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.05) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.6);
+            border-radius: 1.75cqi; 
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        .glass-cube:hover {
+            transform: translateY(-8px) scale(1.03);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 100%);
+            box-shadow: 
+                inset 2px 2px 6px rgba(255, 255, 255, 1), 
+                inset -2px -2px 6px rgba(0, 0, 0, 0.02), 
+                8px 20px 30px rgba(0, 0, 0, 0.08);
+            z-index: 30 !important; 
+        }
+
+        .union-shadow-wrapper { filter: drop-shadow(0 10px 30px rgba(0,0,0,0.06)); }
+        .union-svg { transition: all 0.5s ease-out; }
+        .union-group:hover .union-svg { opacity: 0; filter: blur(12px); transform: scale(0.95); }
+
+        .glass-char-box {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 3.5cqi;
+            padding: 0.6cqi 1cqi;
+            background: linear-gradient(135deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.1) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1), inset 1px 1px 4px rgba(255,255,255,0.9);
+            border-radius: 1cqi;
+            opacity: 0;
+            pointer-events: none; 
+            text-shadow: 0 2px 10px rgba(255,255,255,0.8);
+            transform: translateY(3cqi) scale(0.7) rotate(0deg);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .union-group:hover .glass-char-box { opacity: 1; }
+        .union-group:hover .char-1 { transform: translateY(0) scale(1) rotate(-8deg); transition-delay: 0.05s; }
+        .union-group:hover .char-2 { transform: translateY(0) scale(1) rotate(5deg); transition-delay: 0.1s; }
+        .union-group:hover .char-3 { transform: translateY(0) scale(1) rotate(-4deg); transition-delay: 0.15s; }
+        .union-group:hover .char-4 { transform: translateY(0) scale(1) rotate(12deg); transition-delay: 0.2s; }
+        .union-group:hover .char-5 { transform: translateY(0) scale(1) rotate(-10deg); transition-delay: 0.05s; }
+        .union-group:hover .char-6 { transform: translateY(0) scale(1) rotate(4deg); transition-delay: 0.1s; }
+        .union-group:hover .char-7 { transform: translateY(0) scale(1) rotate(-15deg); transition-delay: 0.15s; }
+        .union-group:hover .char-8 { transform: translateY(0) scale(1) rotate(8deg); transition-delay: 0.2s; }
+
+        .title-font { font-family: 'Arial Black', Impact, sans-serif; }
+
+        /* ================= 辅助模态与交互类 ================= */
+        .tilt-card { transform-style: preserve-3d; transition: transform 0.1s; }
+        .tilt-content { transform: translateZ(30px); }
+
+        .project-modal { position: fixed; inset: 0; z-index: 100; visibility: hidden; opacity: 0; background-color: #f4f6f9; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
+        .modal-active { visibility: visible; opacity: 1; transition: opacity 0.5s ease; }
+
+        /* ✨ 长图独立骨架占位系统 */
+        .img-wrapper {
+            position: relative;
+            width: 100%;
+            min-height: 25vh;
+            background-color: #f4f6f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: -1px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+        .img-wrapper:first-child { margin-top: 0; }
+
+        .ai-chat-window { position: fixed; bottom: 90px; right: 32px; width: 360px; height: 500px; z-index: 1000; transform: translateY(20px) scale(0.95); opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-origin: bottom right; }
+        .ai-chat-window.active { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        .chat-message { max-width: 85%; padding: 10px 14px; border-radius: 12px; font-size: 0.875rem; line-height: 1.5; margin-bottom: 12px; word-wrap: break-word; }
+        .chat-message.user { background-color: #1a1a1a; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .chat-message.ai { background-color: #ffffff; color: #1a1a1a; border: 1px solid #e5e7eb; align-self: flex-start; border-bottom-left-radius: 2px; }
+        
+        .typing-indicator { display: flex; align-items: center; space-x: 4px; padding: 12px 16px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; align-self: flex-start; border-bottom-left-radius: 2px; margin-bottom: 12px;}
+        .typing-dot { width: 6px; height: 6px; background-color: #9ca3af; border-radius: 50%; animation: typing 1.4s infinite ease-in-out both; margin: 0 2px;}
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <!-- ✨ 纯净的全局底层弥散光斑 -->
+    <div class="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
+        <div class="absolute top-[0%] left-[10%] w-[35vw] h-[35vw] rounded-full bg-[#1F53FF] animate-blob"></div>
+        <div class="absolute top-[20%] right-[5%] w-[30vw] h-[30vw] rounded-full bg-[#95C2E1] animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-[0%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#B0DACE] animate-blob animation-delay-4000"></div>
+        <div class="absolute top-[40%] left-[50%] w-[25vw] h-[25vw] rounded-full bg-[#F4E5BD] animate-blob animation-delay-6000"></div>
+    </div>
+
+    <!-- 磁性光标 -->
+    <div id="custom-cursor"></div>
+
+    <!-- 顶部导航 -->
+    <nav class="fixed top-8 left-1/2 transform -translate-x-1/2 glass-nav px-8 py-3 z-[90] flex space-x-10 text-sm font-bold tracking-widest text-gray-500">
+        <a href="#hero" class="hover-trigger hover:text-black transition duration-300">HOME</a>
+        <a href="#about" class="hover-trigger hover:text-black transition duration-300">ABOUT</a>
+        <a href="#gallery" class="hover-trigger hover:text-black transition duration-300">WORKS</a>
+        <a href="#contact" class="hover-trigger hover:text-black transition duration-300">CONTACT</a>
+    </nav>
+
+    <!-- ================= 模块 1：首屏 (交互封面版本) ================= -->
+    <section id="hero" class="relative w-full h-screen flex flex-col justify-center items-center overflow-hidden bg-transparent">
+        
+        <div class="canvas-container">
+            <!-- 首屏内专属光斑 -->
+            <div class="absolute inset-0 z-0">
+                <div class="glow-blob-hero glow-blue-hero"></div>
+                <div class="glow-blob-hero glow-purple-hero"></div>
+                <div class="glow-blob-hero glow-mint-hero"></div>
+            </div>
+
+            <!-- 无缝玻璃阵列 -->
+            <div class="absolute inset-0 z-10 pointer-events-auto">
+                <div class="glass-cube hover-glass-trigger" style="left: calc(880/1600*100%); top: calc(226/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1037/1600*100%); top: calc(226/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1194/1600*100%); top: calc(226/900*100%); opacity: 1;"></div>
+
+                <div class="glass-cube hover-glass-trigger" style="left: calc(723/1600*100%); top: calc(383/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(880/1600*100%); top: calc(383/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1037/1600*100%); top: calc(383/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1194/1600*100%); top: calc(383/900*100%); opacity: 1;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1351/1600*100%); top: calc(383/900*100%); opacity: 1;"></div>
+
+                <div class="glass-cube hover-glass-trigger" style="left: calc(252/1600*100%); top: calc(540/900*100%); opacity: 0.05;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(409/1600*100%); top: calc(540/900*100%); opacity: 0.15;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(566/1600*100%); top: calc(540/900*100%); opacity: 0.3;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(723/1600*100%); top: calc(540/900*100%); opacity: 0.5;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(880/1600*100%); top: calc(540/900*100%); opacity: 0.7;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1037/1600*100%); top: calc(540/900*100%); opacity: 0.85;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1194/1600*100%); top: calc(540/900*100%); opacity: 0.95;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1351/1600*100%); top: calc(540/900*100%); opacity: 1;"></div>
+
+                <div class="glass-cube hover-glass-trigger" style="left: calc(95/1600*100%); top: calc(697/900*100%); opacity: 0.02;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(252/1600*100%); top: calc(697/900*100%); opacity: 0.08;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(409/1600*100%); top: calc(697/900*100%); opacity: 0.2;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(566/1600*100%); top: calc(697/900*100%); opacity: 0.4;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(723/1600*100%); top: calc(697/900*100%); opacity: 0.6;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(880/1600*100%); top: calc(697/900*100%); opacity: 0.8;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1037/1600*100%); top: calc(697/900*100%); opacity: 0.95;"></div>
+                <div class="glass-cube hover-glass-trigger" style="left: calc(1194/1600*100%); top: calc(697/900*100%); opacity: 1;"></div>
+            </div>
+
+            <!-- SVG 联集与单字炸裂玻璃框 -->
+            <div class="absolute inset-0 z-40 pointer-events-none union-group">
+                <div class="absolute inset-0 union-shadow-wrapper">
+                    <!-- SVG 无缝联集 -->
+                    <svg class="absolute inset-0 w-full h-full union-svg pointer-events-none" viewBox="0 0 1600 900">
+                        <path class="pointer-events-auto cursor-none hover-glass-trigger" d="
+                            M 1317 56 L 1374 56 A 45 45 0 0 1 1419 101 L 1419 139 
+                            A 45 45 0 0 0 1464 184 A 45 45 0 0 1 1509 229 L 1509 395 
+                            A 45 45 0 0 1 1464 440 L 1415 440 A 45 45 0 0 0 1370 485 
+                            L 1370 516 A 45 45 0 0 1 1325 561 L 971 561 A 45 45 0 0 1 926 516 
+                            L 926 450 A 45 45 0 0 1 971 405 L 1307 405 A 45 45 0 0 0 1352 360 
+                            L 1352 243 A 40 40 0 0 0 1312 203 A 40 40 0 0 1 1272 163 
+                            L 1272 101 A 45 45 0 0 1 1317 56 Z" fill="#fdfdfd" />
+                    </svg>
+
+                    <!-- 玻璃炸裂文字 -->
+                    <div class="glass-char-box char-1" style="left: calc(1260/1600*100%); top: calc(70/900*100%);">欢</div>
+                    <div class="glass-char-box char-2" style="left: calc(1350/1600*100%); top: calc(120/900*100%);">迎</div>
+                    <div class="glass-char-box char-3" style="left: calc(1340/1600*100%); top: calc(230/900*100%);">走</div>
+                    <div class="glass-char-box char-4" style="left: calc(1380/1600*100%); top: calc(320/900*100%);">进</div>
+                    <div class="glass-char-box char-5" style="left: calc(960/1600*100%); top: calc(420/900*100%);">我</div>
+                    <div class="glass-char-box char-6" style="left: calc(1060/1600*100%); top: calc(390/900*100%);">的</div>
+                    <div class="glass-char-box char-7" style="left: calc(1170/1600*100%); top: calc(440/900*100%);">世</div>
+                    <div class="glass-char-box char-8" style="left: calc(1280/1600*100%); top: calc(410/900*100%);">界</div>
+                </div>
+            </div>
+
+            <!-- 首屏排版 -->
+            <div class="absolute inset-0 z-50 pointer-events-none">
+                <div class="absolute" style="left: calc(110/1600*100%); top: calc(200/900*100%);">
+                    <h3 class="font-bold text-gray-700 tracking-wider mb-2" style="font-size: 1.8cqi;">Welcome to My</h3>
+                    <h1 class="title-font text-[#2a2a2e] leading-[0.85] tracking-tighter" style="font-size: 11.5cqi; margin-left: -0.6cqi;">PORT</h1>
+                    <h1 class="title-font text-[#2a2a2e] leading-[0.85] tracking-tighter mt-1" style="font-size: 11.5cqi; margin-left: -0.6cqi;">FOLIO</h1>
+                    <div class="flex items-center mt-8">
+                        <span class="bg-[#2a2a2e] rounded-full" style="width: 0.6cqi; height: 0.6cqi; margin-right: 1cqi;"></span>
+                        <p class="font-bold text-gray-800 tracking-widest" style="font-size: 1.1cqi;">求职者 : 黄佐真子</p>
+                    </div>
+                </div>
+
+                <div class="absolute" style="left: calc(110/1600*100%); bottom: calc(80/900*100%);">
+                    <p class="font-bold text-gray-800 tracking-widest" style="font-size: 0.9cqi;">求职：产品策划/产品经理 实习生</p>
+                </div>
+
+                <div class="absolute" style="right: calc(120/1600*100%); bottom: calc(80/900*100%);">
+                    <p class="font-black text-gray-900 tracking-widest" style="font-size: 1.2cqi;">2026</p>
+                </div>
+
+                <!-- 右侧文字交互 -->
+                <div class="absolute text-left text-trigger pointer-events-auto p-6 -m-6 rounded-xl cursor-none" 
+                     style="left: calc(1105/1600*100%); top: calc(579/900*100%);">
+                    <p class="font-bold text-white mb-2 tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]" style="font-size: 1.05cqi;">Email : zzzHuang@163.com</p>
+                    <p class="font-bold text-white tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]" style="font-size: 1.05cqi;">Wechat & Phone : 15375936606</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页面免责声明与滚动提示 -->
+        <div class="absolute bottom-24 left-1/2 transform -translate-x-1/2 text-[10px] text-gray-400/60 font-bold tracking-widest z-[60] pointer-events-none flex items-center max-w-[80vw] text-center">
+            <svg class="w-3 h-3 mr-1.5 opacity-70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>本网页图床可能被限速，存在图片加载缓慢的问题。</span>
+        </div>
+        <p class="absolute bottom-12 left-1/2 transform -translate-x-1/2 text-gray-500 font-bold tracking-widest text-xs uppercase z-[60] pointer-events-none">↓ Scroll to explore</p>
+
+    </section>
+
+    <!-- ================= 模块 2：综合简历区 ================= -->
+    <section id="about" class="min-h-screen flex items-center justify-center px-6 md:px-12 relative z-10 py-24">
+        <div class="glass-card w-full max-w-7xl p-8 md:p-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+            
+            <!-- 左侧：基础信息 -->
+            <div class="lg:col-span-3 flex flex-col items-center lg:items-start text-center lg:text-left space-y-6">
+                <div class="w-full max-w-[240px] aspect-[3/4] rounded-inner overflow-hidden shadow-lg border border-white/60 relative tilt-card bg-[#f4f5f7]" id="profile-card">
+                    <div class="preview-loader absolute inset-0 flex flex-col items-center justify-center z-0 px-3 text-center pointer-events-none tilt-content transition-opacity duration-500">
+                        <svg class="animate-spin h-6 w-6 text-[#1F53FF] mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-xs font-bold text-gray-600 mb-1">图片加载中...</span>
+                        <span class="text-[9px] text-gray-400 leading-tight">本网页图床可能被限速，<br>存在图片加载缓慢的问题。</span>
+                    </div>
+                    <img src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/photo.jpg" class="preview-img w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-700 tilt-content opacity-0 relative z-10" alt="个人照片">
+                </div>
+                <div>
+                    <h2 class="text-3xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-[#1F53FF] to-[#95C2E1]">黄佐真子</h2>
+                    <p class="text-gray-500 font-bold text-sm tracking-widest">求职意向：产品策划 / PM 实习生</p>
+                </div>
+                <div class="w-full h-[1px] bg-gray-200"></div>
+                <div class="flex flex-wrap gap-2 justify-center lg:justify-start">
+                    <span class="px-3 py-1 bg-white/50 border border-white rounded-full text-xs font-bold text-gray-600">出生年月：2002.04</span>
+                    <span class="px-3 py-1 bg-white/50 border border-white rounded-full text-xs font-bold text-gray-600">实习 3-6个月</span>
+                    <span class="px-3 py-1 bg-white/50 border border-white rounded-full text-xs font-bold text-gray-600">随时到岗</span>
+                </div>
+            </div>
+
+            <!-- 中间：教育与经历 -->
+            <div class="lg:col-span-5 space-y-10">
+                <!-- 教育背景 -->
+                <div>
+                    <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center"><span class="w-2 h-2 rounded-full bg-[#1F53FF] mr-3"></span>EDUCATION</h3>
+                    <div class="relative border-l border-gray-300 ml-1 pl-6 space-y-8">
+                        <div class="relative group hover-trigger">
+                            <div class="absolute w-3 h-3 bg-white border-2 border-[#1F53FF] rounded-full -left-[1.9rem] top-1.5 transition group-hover:scale-125"></div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h4 class="font-bold text-gray-900 text-lg transition group-hover:text-[#1F53FF]">南京理工大学 <span class="text-sm font-normal text-gray-500">| 硕士</span></h4>
+                                <p class="text-xs text-gray-400 font-bold tracking-wider">2024.09 - 2027.06</p>
+                            </div>
+                            <p class="text-sm text-gray-700 font-medium mb-3">设计艺术与传媒学院 · 设计学</p>
+                            <div class="bg-white/50 border border-white/60 rounded-lg p-3 space-y-2">
+                                <p class="text-xs text-gray-600"><span class="font-bold text-gray-800">平均学分绩：</span><span class="data-highlight hover-color-p1 hover-trigger">90.74/100</span> <span class="mx-2 text-gray-300">|</span> <span class="font-bold text-gray-800">专业排名：</span><span class="data-highlight hover-color-p1 hover-trigger">3/74</span></p>
+                                <p class="text-xs text-gray-500 leading-relaxed"><span class="font-bold text-gray-700">核心课程：</span>设计心理学(91)；设计学研究方法(91)；设计数据处理与分析(90)；Design Art History Research(90)...</p>
+                            </div>
+                        </div>
+                        <div class="relative group hover-trigger">
+                            <div class="absolute w-3 h-3 bg-white border-2 border-gray-400 rounded-full -left-[1.9rem] top-1.5 transition group-hover:scale-125 group-hover:border-[#1F53FF]"></div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h4 class="font-bold text-gray-900 text-lg transition group-hover:text-[#1F53FF]">南京理工大学 <span class="text-sm font-normal text-gray-500">| 本科</span></h4>
+                                <p class="text-xs text-gray-400 font-bold tracking-wider">2020.09 - 2024.06</p>
+                            </div>
+                            <p class="text-sm text-gray-700 font-medium mb-3">设计艺术与传媒学院 · 工业设计</p>
+                            <div class="bg-white/50 border border-white/60 rounded-lg p-3 space-y-2">
+                                <p class="text-xs text-gray-600"><span class="font-bold text-gray-800">GPA：</span><span class="data-highlight hover-color-p1 hover-trigger">3.669/4.0</span> <span class="mx-2 text-gray-300">|</span> <span class="font-bold text-gray-800">专业排名：</span><span class="data-highlight hover-color-p1 hover-trigger">1/35</span></p>
+                                <p class="text-xs text-gray-500 leading-relaxed"><span class="font-bold text-gray-700">核心课程：</span>产品结构设计(98)；手绘(94)；模型技术(93)；专项设计Ⅱ(93)；材料与工艺(92)；人机工程学(92)...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 实习经历 -->
+                <div>
+                    <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center"><span class="w-2 h-2 rounded-full bg-[#1a1a1a] mr-3"></span>EXPERIENCE</h3>
+                    <div class="relative border-l border-gray-300 ml-1 pl-6 space-y-6">
+                        <div class="relative group hover-trigger">
+                            <div class="absolute w-3 h-3 bg-white border-2 border-[#1a1a1a] rounded-full -left-[1.9rem] top-1.5 transition group-hover:bg-[#1a1a1a]"></div>
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h4 class="font-bold text-gray-900 text-lg transition group-hover:text-[#1F53FF]">南京飞的愚影业有限公司</h4>
+                                <p class="text-xs text-gray-400 font-bold tracking-wider">2024.10 - 2025.01</p>
+                            </div>
+                            <p class="text-sm text-[#1F53FF] font-bold mb-3">IP衍生品设计实习生 / 项目组长</p>
+                            <p class="text-sm text-gray-700 leading-relaxed mb-3"><span class="font-bold text-gray-900">工作概述：</span>担任项目组长，负责动画电影《酷狗特工》IP毛绒公交卡设计项目，并承担从需求对接到各组方案交付的全过程管理与执行。</p>
+                            <ul class="text-xs text-gray-600 space-y-2 list-disc pl-4 leading-relaxed">
+                                <li><span class="font-bold text-gray-800">场景驱动设计：</span>主动调研场景，发现“纯观赏性”玩偶购买动力不足，优化为<span class="data-highlight hover-color-p1 hover-trigger">毛绒玩偶+刷卡功能</span>的实用方案。</li>
+                                <li><span class="font-bold text-gray-800">IP情感化赋能：</span>拆解抽象角色性格内核，通过表情刻画与可替换细节设计，将其具象化为产品细节，获公司高度认可。</li>
+                                <li><span class="font-bold text-gray-800">跨职能项目管理：</span>梳理各类衍生产品需求并统筹小组分工。定期对齐进度，实现跨职能小组<span class="data-highlight hover-color-p1 hover-trigger">0延期交付</span>。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ✨ 右侧：核心能力面板与技能 (按照要求更新文案) -->
+            <div class="lg:col-span-4 space-y-4">
+                <h3 class="text-lg font-black text-gray-900 mb-6 flex items-center"><span class="w-2 h-2 rounded-full bg-[#95C2E1] mr-3"></span>CORE CAPABILITIES</h3>
+                
+                <!-- 能力 1 -->
+                <div class="bg-white/40 border border-white/60 p-5 rounded-inner hover-trigger group transition hover:bg-white/60">
+                    <h4 class="font-bold text-gray-900 mb-2 flex items-center justify-between">
+                        发掘增量与复现能力
+                        <div class="flex gap-1"><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">MVP验证</span><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">策略复用</span></div>
+                    </h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        深入圈层挖掘真实痛点，通过“小范围试水→快速迭代”验证市场空白，并将成功策略系统化复现。棉花娃娃项目中以零钱包试水<span class="data-highlight hover-color-p2 hover-trigger">2分钟售罄</span>，迅速放大为爆款，并成功复用“豆豆眼”策略孵化多个IP系列，总销量超<span class="data-highlight hover-color-p2 hover-trigger">5000件</span>。
+                    </p>
+                </div>
+                
+                <!-- 能力 2 -->
+                <div class="bg-white/40 border border-white/60 p-5 rounded-inner hover-trigger group transition hover:bg-white/60">
+                    <h4 class="font-bold text-gray-900 mb-2 flex items-center justify-between">
+                        宏观统筹与敏捷管理
+                        <div class="flex gap-1"><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">跨组协同</span><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">敏捷迭代</span></div>
+                    </h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        在多线程项目中建立协作机制、拉齐多方进度，同时保持快速响应与迭代能力。统筹广汽项目<span class="data-highlight hover-color-p1 hover-trigger">6个</span>子项目组、超<span class="data-highlight hover-color-p1 hover-trigger">30人</span>跨团队，<span class="data-highlight hover-color-p1 hover-trigger">零延期交付</span>完整汇报视频；在棉花娃娃项目中实现从预售到现货的模式转型，直接打透资金周转痛点。
+                    </p>
+                </div>
+                
+                <!-- 能力 3 -->
+                <div class="bg-white/40 border border-white/60 p-5 rounded-inner hover-trigger group transition hover:bg-white/60">
+                    <h4 class="font-bold text-gray-900 mb-2 flex items-center justify-between">
+                        数据驱动与网感运营
+                        <div class="flex gap-1"><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">爆款拆解</span><span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[9px]">商业闭环</span></div>
+                    </h4>
+                    <p class="text-xs text-gray-500 leading-relaxed">
+                        基于数据反馈优化内容策略，敏锐捕捉热点与用户情绪。独立运营多平台自媒体矩阵，累计粉丝超<span class="data-highlight hover-color-p3 hover-trigger">6w</span>，单篇最高浏览量<span class="data-highlight hover-color-p3 hover-trigger">67w</span>；双平台动漫账号<span class="data-highlight hover-color-p3 hover-trigger">2个月</span>完成冷启动，获赞<span class="data-highlight hover-color-p3 hover-trigger">27w</span>，具备内容商业化闭环能力。
+                    </p>
+                </div>
+                
+                <!-- 精细分类的技能与语言面板 -->
+                <div class="mt-6 pt-6 border-t border-gray-200">
+                    <h4 class="font-bold text-gray-900 mb-4 text-sm tracking-wide">LANGUAGES & SKILLS</h4>
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <span class="text-xs font-bold text-gray-700 w-16 shrink-0 mt-0.5">语言能力</span>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">CET-4 (575)</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">CET-6 (554)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xs font-bold text-gray-700 w-16 shrink-0 mt-0.5">内容设计</span>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Figma</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">PS / AI</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Ug / Keyshot</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Gemini 3</span>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xs font-bold text-gray-700 w-16 shrink-0 mt-0.5">协同管理</span>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Miro</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Boardmix</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Xmind</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">Office</span>
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="text-xs font-bold text-gray-700 w-16 shrink-0 mt-0.5">视频数据</span>
+                            <div class="flex flex-wrap gap-1.5 flex-1">
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">剪映 / AE</span>
+                                <span class="px-2 py-0.5 bg-white/60 border border-white rounded text-[10px] font-semibold text-gray-600">SPSS分析</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ================= 模块 3：项目展厅 ================= -->
+    <section id="gallery" class="min-h-screen relative flex flex-col justify-center overflow-hidden py-24">
+        <div class="absolute top-24 left-12 md:left-24 z-20">
+            <h2 class="text-5xl font-black tracking-tighter text-gray-900">SELECTED WORKS</h2>
+            <p class="text-gray-500 mt-2 font-bold tracking-widest text-sm">向两侧滑动浏览 · 点击深潜详情</p>
+        </div>
+
+        <div id="gallery-track" class="flex items-center space-x-8 px-[10vw] mt-20 w-[max-content] transition-transform duration-700 ease-out">
+            
+            <div class="glass-card w-[85vw] md:w-[380px] p-5 flex flex-col relative group cursor-pointer hover-trigger" onclick="openProject('modal-project-1')">
+                <div class="accent-glow top-0 right-0 bg-[#1F53FF] transition duration-500 group-hover:scale-110"></div>
+                <div class="w-full aspect-video rounded-inner overflow-hidden relative z-10 mb-5 border border-white/50 shadow-sm bg-[#f4f5f7]">
+                    <div class="preview-loader absolute inset-0 flex flex-col items-center justify-center z-0 px-2 text-center pointer-events-none transition-opacity duration-500">
+                        <svg class="animate-spin h-5 w-5 text-[#1F53FF] mb-2 opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-[10px] font-bold text-gray-600 mb-1">图片加载中...</span>
+                        <span class="text-[8px] text-gray-400 leading-tight transform scale-90">本网页图床可能被限速，<br>存在图片加载缓慢的问题。</span>
+                    </div>
+                    <img src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-1.png" class="preview-img w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-0 relative z-10" alt="广汽GOVE项目封面">
+                </div>
+                <div class="flex flex-col flex-1 px-1 z-10">
+                    <span class="text-[#1F53FF] text-[10px] font-bold tracking-widest block mb-2">前瞻统筹 / 商业逻辑</span>
+                    <h3 class="text-xl font-black text-gray-900 mb-2 leading-tight">广汽集团 × 大湾区智慧出行</h3>
+                    <p class="text-xs text-gray-500 line-clamp-2 mb-6 leading-relaxed">担任项目总负责人，为<span class="data-highlight hover-color-p1 hover-trigger">6大</span>子课题构建自洽的2035大湾区商业逻辑与出行生态世界观。</p>
+                    <div class="mt-auto flex items-center text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-[#1F53FF] transition">
+                        <span class="w-6 h-[2px] bg-current mr-3"></span> DEEP DIVE
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card w-[85vw] md:w-[380px] p-5 flex flex-col relative group cursor-pointer hover-trigger" onclick="openProject('modal-project-2')">
+                <div class="accent-glow bottom-0 right-0 bg-[#95C2E1] transition duration-500 group-hover:scale-110"></div>
+                <div class="w-full aspect-video rounded-inner overflow-hidden relative z-10 mb-5 border border-white/50 shadow-sm bg-[#f4f5f7]">
+                    <div class="preview-loader absolute inset-0 flex flex-col items-center justify-center z-0 px-2 text-center pointer-events-none transition-opacity duration-500">
+                        <svg class="animate-spin h-5 w-5 text-[#1F53FF] mb-2 opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-[10px] font-bold text-gray-600 mb-1">图片加载中...</span>
+                        <span class="text-[8px] text-gray-400 leading-tight transform scale-90">本网页图床可能被限速，<br>存在图片加载缓慢的问题。</span>
+                    </div>
+                    <img src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.1.png" class="preview-img w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-0 relative z-10" alt="棉花娃娃项目封面">
+                </div>
+                <div class="flex flex-col flex-1 px-1 z-10">
+                    <span class="text-[#7aaacc] text-[10px] font-bold tracking-widest block mb-2">从0-1企划 / 商业操盘</span>
+                    <h3 class="text-xl font-black text-gray-900 mb-2 leading-tight">棉花娃娃系列全链路落地</h3>
+                    <p class="text-xs text-gray-500 line-clamp-2 mb-6 leading-relaxed">主导市场洞察与矩阵孵化，首创现货发售模式解决资金流转痛点，实现超<span class="data-highlight hover-color-p2 hover-trigger">92w</span>总销售额。</p>
+                    <div class="mt-auto flex items-center text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-[#7aaacc] transition">
+                        <span class="w-6 h-[2px] bg-current mr-3"></span> DEEP DIVE
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card w-[85vw] md:w-[380px] p-5 flex flex-col relative group cursor-pointer hover-trigger" onclick="openProject('modal-project-3')">
+                <div class="accent-glow top-1/2 left-0 bg-[#B0DACE] transition duration-500 group-hover:scale-110"></div>
+                <div class="w-full aspect-video rounded-inner overflow-hidden relative z-10 mb-5 border border-white/50 shadow-sm bg-[#f4f5f7]">
+                    <div class="preview-loader absolute inset-0 flex flex-col items-center justify-center z-0 px-2 text-center pointer-events-none transition-opacity duration-500">
+                        <svg class="animate-spin h-5 w-5 text-[#1F53FF] mb-2 opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-[10px] font-bold text-gray-600 mb-1">图片加载中...</span>
+                        <span class="text-[8px] text-gray-400 leading-tight transform scale-90">本网页图床可能被限速，<br>存在图片加载缓慢的问题。</span>
+                    </div>
+                    <img src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/3.1.png" class="preview-img w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-0 relative z-10" alt="自媒体项目封面">
+                </div>
+                <div class="flex flex-col flex-1 px-1 z-10">
+                    <span class="text-[#5ba18c] text-[10px] font-bold tracking-widest block mb-2">数据驱动 / 用户运营</span>
+                    <h3 class="text-xl font-black text-gray-900 mb-2 leading-tight">多平台自媒体IP矩阵运营</h3>
+                    <p class="text-xs text-gray-500 line-clamp-2 mb-6 leading-relaxed">制定差异化内容策略与爆款打法，单篇最高达<span class="data-highlight hover-color-p3 hover-trigger">67w</span>浏览量并成功签约品牌实现商业变现。</p>
+                    <div class="mt-auto flex items-center text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-[#5ba18c] transition">
+                        <span class="w-6 h-[2px] bg-current mr-3"></span> DEEP DIVE
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card w-[85vw] md:w-[380px] p-5 flex flex-col relative group cursor-pointer hover-trigger" onclick="openProject('modal-project-4')">
+                <div class="accent-glow bottom-0 left-0 bg-[#F4E5BD] transition duration-500 group-hover:scale-110"></div>
+                <div class="w-full aspect-video rounded-inner overflow-hidden relative z-10 mb-5 border border-white/50 shadow-sm bg-[#f4f5f7]">
+                    <div class="preview-loader absolute inset-0 flex flex-col items-center justify-center z-0 px-2 text-center pointer-events-none transition-opacity duration-500">
+                        <svg class="animate-spin h-5 w-5 text-[#1F53FF] mb-2 opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span class="text-[10px] font-bold text-gray-600 mb-1">图片加载中...</span>
+                        <span class="text-[8px] text-gray-400 leading-tight transform scale-90">本网页图床可能被限速，<br>存在图片加载缓慢的问题。</span>
+                    </div>
+                    <img src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.1.png" class="preview-img w-full h-full object-cover transition-all duration-700 group-hover:scale-105 opacity-0 relative z-10" alt="医疗APP项目封面">
+                </div>
+                <div class="flex flex-col flex-1 px-1 z-10">
+                    <span class="text-[#d4af37] text-[10px] font-bold tracking-widest block mb-2">体验设计 / 软硬结合</span>
+                    <h3 class="text-xl font-black text-gray-900 mb-2 leading-tight">呼吸碱中毒急救装置与APP</h3>
+                    <p class="text-xs text-gray-500 line-clamp-2 mb-6 leading-relaxed">挖掘患者隐性情绪痛点，融合硬件物理干预与软件<span class="data-highlight hover-color-p4 hover-trigger">情绪记录追踪</span>，打造闭环医疗体验。</p>
+                    <div class="mt-auto flex items-center text-xs font-bold tracking-widest uppercase text-gray-900 group-hover:text-[#d4af37] transition">
+                        <span class="w-6 h-[2px] bg-current mr-3"></span> DEEP DIVE
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ================= 模块 4：联系方式 ================= -->
+    <section id="contact" class="min-h-[70vh] flex items-center justify-center px-6 relative z-10 py-24 pb-48">
+        <div class="glass-card w-full max-w-4xl p-12 md:p-20 text-center flex flex-col items-center relative overflow-hidden">
+            <div class="accent-glow top-0 left-1/2 -translate-x-1/2 bg-[#1F53FF] opacity-30 w-64 h-64"></div>
+            
+            <h2 class="text-4xl md:text-5xl font-black tracking-tighter text-gray-900 mb-4 z-10">LET'S CONNECT</h2>
+            <p class="text-gray-500 font-medium mb-12 z-10">期待加入您的团队，用设计的严谨构建商业的可能。</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full z-10">
+                <div class="bg-white/50 border border-white/60 p-6 rounded-inner flex flex-col items-center hover-trigger transition hover:bg-white/80">
+                    <span class="text-3xl mb-3">✉️</span>
+                    <span class="text-xs font-bold tracking-widest text-gray-400 mb-1">EMAIL</span>
+                    <a href="mailto:zzzHuang0415@163.com" class="font-bold text-gray-900 hover:text-[#1F53FF]">zzzHuang0415@163.com</a>
+                </div>
+                <div class="bg-white/50 border border-white/60 p-6 rounded-inner flex flex-col items-center hover-trigger transition hover:bg-white/80">
+                    <span class="text-3xl mb-3">📱</span>
+                    <span class="text-xs font-bold tracking-widest text-gray-400 mb-1">PHONE</span>
+                    <a href="tel:15375936606" class="font-bold text-gray-900 hover:text-[#1F53FF]">15375936606</a>
+                </div>
+                <div class="bg-white/50 border border-white/60 p-6 rounded-inner flex flex-col items-center hover-trigger transition hover:bg-white/80">
+                    <span class="text-3xl mb-3">💬</span>
+                    <span class="text-xs font-bold tracking-widest text-gray-400 mb-1">WECHAT</span>
+                    <span class="font-bold text-gray-900">hzzz15375936606</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 模态框区 -->
+    <!-- ========================================== -->
+
+    <!-- 项目1：广汽 -->
+    <div id="modal-project-1" class="project-modal bg-[#f4f6f9]/95 backdrop-blur-3xl" style="display: none;">
+        <div class="w-full min-h-full relative">
+            <div class="sticky top-8 z-[110] w-full h-0 pointer-events-none">
+                <button onclick="closeProject('modal-project-1')" class="absolute top-0 left-8 md:left-12 pointer-events-auto glass-nav text-gray-900 px-5 h-12 flex items-center justify-center text-sm font-bold tracking-widest hover:scale-105 hover:bg-black hover:text-white hover:border-black transition duration-300 shadow-xl group hover-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> BACK
+                </button>
+            </div>
+
+            <div class="max-w-5xl mx-auto min-h-screen flex flex-col relative">
+                <div class="modal-loader absolute inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-500 pointer-events-none">
+                    <div class="text-sm font-bold tracking-widest text-[#1F53FF] mb-4 animate-pulse">CONNECTING DATA...</div>
+                    <div class="w-64 h-[2px] bg-gray-200 overflow-hidden"><div class="loading-progress h-full bg-[#1F53FF] w-0"></div></div>
+                </div>
+
+                <div class="modal-content-area opacity-0 translate-y-12 transition-all duration-700 ease-out py-24 px-6 flex flex-col w-full">
+                    <div class="mb-12 max-w-4xl mt-12 md:mt-0">
+                        <span class="text-[#1F53FF] font-bold tracking-widest text-sm mb-4 block">前瞻性产学研设计 / 2023.10-2024.01</span>
+                        <h2 class="text-5xl md:text-6xl font-black mb-8 leading-tight text-gray-900">广汽集团 × 大湾区智慧出行<br><span class="text-3xl text-gray-500 font-normal">基于GOVE飞行汽车的升维加速研究</span></h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mt-12 border-t border-gray-200 pt-10">
+                            <div class="md:col-span-2 space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">Project Overview</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">
+                                    随着 eVTOL、滑动底盘等新型交通工具的涌现，未来城市的立体交通蓝图亟需全方位的体验规划。作为复杂的超大型城市群，粤港澳大湾区成为了这场智慧出行变革的最佳试验场。本次产学研项目旨在利用虚拟仿真技术，向各界直观展现新物种创造的系统性社会与商业价值。<br><br>面对庞大的前瞻性学术命题，我<span class="data-highlight hover-color-p1 hover-trigger">将宏大叙事降维拆解</span>，为<span class="data-highlight hover-color-p1 hover-trigger">6个</span>人群与场景差异巨大的子课题<span class="data-highlight hover-color-p1 hover-trigger">构建统一的商业逻辑框架</span>，并最终将其<span class="data-highlight hover-color-p1 hover-trigger">整合成自洽的生态系统世界观</span>。
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">核心工作 Role</h4>
+                                <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+                                    <li><span class="font-bold text-gray-800">架构统筹：</span>担任大组长，统筹下辖6个子课题组输出前瞻性方案与视觉交付。</li>
+                                    <li><span class="font-bold text-gray-800">敏捷管理：</span>建立“定期站会+里程碑”SOP，成功拉齐<span class="data-highlight hover-color-p1 hover-trigger">30+人</span>研发迭代进度。</li>
+                                    <li><span class="font-bold text-gray-800">成果汇演：</span>整合制作<span class="data-highlight hover-color-p1 hover-trigger">10分钟</span>完整世界观汇报大视频，为高管提供商业决策支撑。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-12 glass-card p-6 md:p-10 relative overflow-hidden group">
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[#1F53FF] opacity-10 blur-[80px] pointer-events-none rounded-full transition-transform duration-1000 group-hover:scale-110"></div>
+                        <h4 class="text-xl font-black text-gray-900 mb-8 relative z-10 flex items-center">
+                            <span class="w-3 h-3 rounded-full bg-[#1F53FF] mr-3"></span> Workflow: Agile Project Management
+                        </h4>
+                        <div class="flex flex-col md:flex-row items-center justify-between relative z-10 space-y-6 md:space-y-0 md:space-x-4">
+                            <div class="w-full md:w-1/3 bg-white/50 border border-white/60 p-6 rounded-[1.5rem] text-center relative shadow-sm hover:bg-white/80 transition duration-300 hover-trigger">
+                                <div class="text-[#1F53FF] font-black text-2xl mb-2 opacity-50">01</div>
+                                <h5 class="font-bold text-gray-900 mb-2">需求拆解 & 规划</h5>
+                                <p class="text-xs text-gray-500 leading-relaxed">宏观世界观降维<br>6大子课题SOP制定</p>
+                            </div>
+                            <div class="hidden md:flex text-[#1F53FF]/50">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                            </div>
+                            <div class="w-full md:w-1/3 bg-white/70 border-2 border-[#1F53FF]/30 p-6 rounded-[1.5rem] text-center relative shadow-md transform md:-translate-y-2 hover-trigger">
+                                <div class="absolute -top-3 -right-3 w-8 h-8 bg-[#1F53FF] rounded-full flex items-center justify-center text-white shadow-lg animate-bounce">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                </div>
+                                <div class="text-[#1F53FF] font-black text-2xl mb-2 flex justify-center items-center gap-2">
+                                    <svg class="w-5 h-5 animate-spin-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    02
+                                </div>
+                                <h5 class="font-bold text-[#1F53FF] mb-2">敏捷冲刺 (Sprint)</h5>
+                                <div class="flex justify-center gap-2 mt-3 mb-3">
+                                    <span class="px-2 py-1 bg-[#1F53FF]/10 text-[#1F53FF] border border-[#1F53FF]/20 rounded-md text-[10px] font-bold shadow-sm">定期站会</span>
+                                    <span class="px-2 py-1 bg-[#1F53FF]/10 text-[#1F53FF] border border-[#1F53FF]/20 rounded-md text-[10px] font-bold shadow-sm">Check-point</span>
+                                </div>
+                                <p class="text-xs text-gray-600 font-medium">拉齐30+人进度，循环迭代模型</p>
+                            </div>
+                            <div class="hidden md:flex text-[#1F53FF]/50">
+                                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                            </div>
+                            <div class="w-full md:w-1/3 bg-white/50 border border-white/60 p-6 rounded-[1.5rem] text-center relative shadow-sm hover:bg-white/80 transition duration-300 hover-trigger">
+                                <div class="text-[#1F53FF] font-black text-2xl mb-2 opacity-50">03</div>
+                                <h5 class="font-bold text-gray-900 mb-2">整合 & 交付</h5>
+                                <p class="text-xs text-gray-500 leading-relaxed">生态系统叙事融合<br>高管汇报与定向深化</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ✨ 动态按序并发加载阵列 (每个切片配有自己的骨架和 Loading 数) -->
+                    <div class="w-full bg-white/50 border border-white p-3 md:p-6 rounded-[2rem] shadow-sm relative">
+                        <div class="w-full flex flex-col overflow-hidden rounded-[1rem] md:rounded-[1.25rem] bg-white relative z-10 project-image-group opacity-0 transition-opacity duration-1000">
+                            <!-- 1 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 01</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-1.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 2 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 02</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-2.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 3 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 03</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-3.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 4 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 04</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-4.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 5 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 05</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-5.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 6 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 06</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-6.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 7 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 07</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-7.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 8 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 08</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-8.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 9 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 09</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-9.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 10 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 10</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-10.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 11 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#1F53FF] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 11</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/1-11.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="py-16 w-full flex justify-between items-center border-t border-gray-200 mt-12">
+                        <button onclick="switchProject('modal-project-1', 'modal-project-4')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#1F53FF] transition flex items-center group hover-trigger">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg> PREV PROJECT
+                        </button>
+                        <button onclick="switchProject('modal-project-1', 'modal-project-2')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#1F53FF] transition flex items-center group hover-trigger">
+                            NEXT PROJECT <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transform group-hover:translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目2：棉花娃娃 -->
+    <div id="modal-project-2" class="project-modal bg-[#f4f6f9]/95 backdrop-blur-3xl" style="display: none;">
+        <div class="w-full min-h-full relative">
+            <div class="sticky top-8 z-[110] w-full h-0 pointer-events-none">
+                <button onclick="closeProject('modal-project-2')" class="absolute top-0 left-8 md:left-12 pointer-events-auto glass-nav text-gray-900 px-5 h-12 flex items-center justify-center text-sm font-bold tracking-widest hover:scale-105 hover:bg-black hover:text-white hover:border-black transition duration-300 shadow-xl group hover-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> BACK
+                </button>
+            </div>
+
+            <div class="max-w-5xl mx-auto min-h-screen flex flex-col relative">
+                <div class="modal-loader absolute inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-500 pointer-events-none">
+                    <div class="text-sm font-bold tracking-widest text-[#7aaacc] mb-4 animate-pulse">CONNECTING DATA...</div>
+                    <div class="w-64 h-[2px] bg-gray-200 overflow-hidden"><div class="loading-progress h-full bg-[#7aaacc] w-0"></div></div>
+                </div>
+                <div class="modal-content-area opacity-0 translate-y-12 transition-all duration-700 ease-out py-24 px-6 flex flex-col w-full">
+                    <div class="mb-16 max-w-4xl mt-12 md:mt-0">
+                        <span class="text-[#7aaacc] font-bold tracking-widest text-sm mb-4 block">独立全链路企划 / 2021.01-2022.08</span>
+                        <h2 class="text-5xl md:text-6xl font-black mb-8 leading-tight text-gray-900">棉花娃娃系列商业操盘</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mt-12 border-t border-gray-200 pt-10">
+                            <div class="md:col-span-2 space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">Project Overview</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">
+                                    基于稳定的自媒体粉丝群体，我探索了将粉丝经济转化为实体产品的商业化可能。在深入“娃圈”调研后，我发现行业面临着“工期长、良率低、设计同质化”三大痛点。<br><br>为此，我<span class="data-highlight hover-color-p2 hover-trigger">确立了“豆豆眼”极简设计策略</span>进行MVP测试，并在<span class="data-highlight hover-color-p2 hover-trigger">2分钟</span>内售罄验证了市场需求。随后我<span class="data-highlight hover-color-p2 hover-trigger">独立主导从设计到供应链的全生命周期管理</span>，累计设计<span class="data-highlight hover-color-p2 hover-trigger">20+款</span>产品。通过发挥短工期的核心优势，我率先将行业通行的长预售制<span class="data-highlight hover-color-p2 hover-trigger">转型为48小时现货发售模式</span>，资金周转与发货效率提升了 <span class="data-highlight hover-color-p2 hover-trigger">6-12倍</span>，成功打造了高盈利的商业闭环，最终斩获 <span class="data-highlight hover-color-p2 hover-trigger">92w+</span> 销售额及 <span class="data-highlight hover-color-p2 hover-trigger">5000+</span> 总销量。
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">核心工作 Role</h4>
+                                <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+                                    <li><span class="font-bold text-gray-800">矩阵运作：</span>执行“限时销售→CP对娃→属性延展”产品矩阵策略，单IP销量破<span class="data-highlight hover-color-p2 hover-trigger">3000+</span>，爆款二手溢价超<span class="data-highlight hover-color-p2 hover-trigger">900%</span>。</li>
+                                    <li><span class="font-bold text-gray-800">模式革新：</span>打通后端供应链并引入极简设计，大幅缩短工期，完成预售向现货的模式跨越。</li>
+                                    <li><span class="font-bold text-gray-800">品牌升维：</span>敏锐捕捉社会情绪，推出全降解环保包装的绿色产品线成功破圈，单款售出<span class="data-highlight hover-color-p2 hover-trigger">860件</span>。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ✨ 动态按序并发加载阵列 (每个切片配有自己的骨架和 Loading 数) -->
+                    <div class="w-full bg-white/50 border border-white p-3 md:p-6 rounded-[2rem] shadow-sm relative">
+                        <div class="w-full flex flex-col overflow-hidden rounded-[1rem] md:rounded-[1.25rem] bg-white relative z-10 project-image-group opacity-0 transition-opacity duration-1000">
+                            <!-- 1 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 01</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.1.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 2 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 02</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.2.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 3 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 03</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.3.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 4 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 04</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.4.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 5 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 05</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.5.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 6 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 06</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.6.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 7 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 07</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.7.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 8 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 08</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.8.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 9 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 09</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.9.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 10 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 10</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.10.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 11 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 11</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.11.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 12 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#7aaacc] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 12</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/2.12.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="py-16 w-full flex justify-between items-center border-t border-gray-200 mt-12">
+                        <button onclick="switchProject('modal-project-2', 'modal-project-1')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#7aaacc] transition flex items-center group hover-trigger">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg> PREV PROJECT
+                        </button>
+                        <button onclick="switchProject('modal-project-2', 'modal-project-3')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#7aaacc] transition flex items-center group hover-trigger">
+                            NEXT PROJECT <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transform group-hover:translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目3：自媒体 -->
+    <div id="modal-project-3" class="project-modal bg-[#f4f6f9]/95 backdrop-blur-3xl" style="display: none;">
+        <div class="w-full min-h-full relative">
+            <div class="sticky top-8 z-[110] w-full h-0 pointer-events-none">
+                <button onclick="closeProject('modal-project-3')" class="absolute top-0 left-8 md:left-12 pointer-events-auto glass-nav text-gray-900 px-5 h-12 flex items-center justify-center text-sm font-bold tracking-widest hover:scale-105 hover:bg-black hover:text-white hover:border-black transition duration-300 shadow-xl group hover-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> BACK
+                </button>
+            </div>
+
+            <div class="max-w-5xl mx-auto min-h-screen flex flex-col relative">
+                <div class="modal-loader absolute inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-500 pointer-events-none">
+                    <div class="text-sm font-bold tracking-widest text-[#5ba18c] mb-4 animate-pulse">CONNECTING DATA...</div>
+                    <div class="w-64 h-[2px] bg-gray-200 overflow-hidden"><div class="loading-progress h-full bg-[#5ba18c] w-0"></div></div>
+                </div>
+
+                <div class="modal-content-area opacity-0 translate-y-12 transition-all duration-700 ease-out py-24 px-6 flex flex-col w-full">
+                    <div class="mb-16 max-w-4xl mt-12 md:mt-0">
+                        <span class="text-[#5ba18c] font-bold tracking-widest text-sm mb-4 block">个人自媒体运营 / 2023.05-2026.03</span>
+                        <h2 class="text-5xl md:text-6xl font-black mb-8 leading-tight text-gray-900">多平台自媒体 IP 矩阵</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mt-12 border-t border-gray-200 pt-10">
+                            <div class="md:col-span-2 space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">Project Overview</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">
+                                    基于自身广泛的跨界爱好与强烈的分享欲，我在多个媒体平台进行了垂直内容的分发。在察觉到初期爆款背后的流量红利后，我迅速转向数据驱动模式。<br><br>通过<span class="data-highlight hover-color-p3 hover-trigger">深度拆解爆文的高互动基因</span>，结合各平台的调性<span class="data-highlight hover-color-p3 hover-trigger">制定差异化内容策略</span>，我成功<span class="data-highlight hover-color-p3 hover-trigger">实现了多个账号的极速冷启动</span>。全网矩阵累计粉丝突破 <span class="data-highlight hover-color-p3 hover-trigger">6w+</span>，总互动量超 <span class="data-highlight hover-color-p3 hover-trigger">57w</span>，并完成从内容沉淀到商业品牌签约的完整变现闭环。
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">核心工作 Role</h4>
+                                <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+                                    <li><span class="font-bold text-gray-800">平台策略：</span>微博主打人设沉淀，小红书/抖音专注穿搭、羽毛球等重视觉领域。</li>
+                                    <li><span class="font-bold text-gray-800">数据增长：</span>执行“热点选题+高质量视觉+互动引导”打法，单篇最高达<span class="data-highlight hover-color-p3 hover-trigger">67w</span>浏览与<span class="data-highlight hover-color-p3 hover-trigger">5.2w</span>互动。</li>
+                                    <li><span class="font-bold text-gray-800">能力复制：</span>双平台新号<span class="data-highlight hover-color-p3 hover-trigger">2个月</span>内完成冷启动积累<span class="data-highlight hover-color-p3 hover-trigger">27w</span>赞，验证了增长逻辑的可复制性。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-white/50 border border-white p-3 md:p-6 rounded-[2rem] shadow-sm relative min-h-[30vh]">
+                        <div class="w-full flex flex-col overflow-hidden rounded-[1rem] md:rounded-[1.25rem] bg-white relative z-10 project-image-group opacity-0 transition-opacity duration-1000">
+                            <!-- 1 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#5ba18c] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 01</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/%E8%87%AA%E5%AA%92%E4%BD%93-%E5%B0%81%E9%9D%A2.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="py-16 w-full flex justify-between items-center border-t border-gray-200 mt-12">
+                        <button onclick="switchProject('modal-project-3', 'modal-project-2')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#5ba18c] transition flex items-center group hover-trigger">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg> PREV PROJECT
+                        </button>
+                        <button onclick="switchProject('modal-project-3', 'modal-project-4')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#5ba18c] transition flex items-center group hover-trigger">
+                            NEXT PROJECT <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transform group-hover:translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 项目4：医疗APP -->
+    <div id="modal-project-4" class="project-modal bg-[#f4f6f9]/95 backdrop-blur-3xl" style="display: none;">
+        <div class="w-full min-h-full relative">
+            <div class="sticky top-8 z-[110] w-full h-0 pointer-events-none">
+                <button onclick="closeProject('modal-project-4')" class="absolute top-0 left-8 md:left-12 pointer-events-auto glass-nav text-gray-900 px-5 h-12 flex items-center justify-center text-sm font-bold tracking-widest hover:scale-105 hover:bg-black hover:text-white hover:border-black transition duration-300 shadow-xl group hover-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg> BACK
+                </button>
+            </div>
+
+            <div class="max-w-5xl mx-auto min-h-screen flex flex-col relative">
+                <div class="modal-loader absolute inset-0 z-[100] flex flex-col items-center justify-center transition-opacity duration-500 pointer-events-none">
+                    <div class="text-sm font-bold tracking-widest text-[#d4af37] mb-4 animate-pulse">CONNECTING DATA...</div>
+                    <div class="w-64 h-[2px] bg-gray-200 overflow-hidden"><div class="loading-progress h-full bg-[#d4af37] w-0"></div></div>
+                </div>
+                <div class="modal-content-area opacity-0 translate-y-12 transition-all duration-700 ease-out py-24 px-6 flex flex-col w-full">
+                    <div class="mb-16 max-w-4xl mt-12 md:mt-0">
+                        <span class="text-[#d4af37] font-bold tracking-widest text-sm mb-4 block">软硬结合体验设计 / 2024</span>
+                        <h2 class="text-5xl md:text-6xl font-black mb-8 leading-tight text-gray-900">呼吸碱中毒急救与APP联动方案</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-10 mt-12 border-t border-gray-200 pt-10">
+                            <div class="md:col-span-2 space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">Project Overview</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">
+                                    本毕设课题源自家人因剧烈情绪波动诱发<span class="data-highlight hover-color-p4 hover-trigger">呼吸碱中毒</span>的真实经历。在深入访谈调研后我发现，患者在遭受同等负面情绪时极易复发，单纯的生理急救“治标不治本”，缺乏长效的<span class="data-highlight hover-color-p4 hover-trigger">情绪调理缺失</span>机制是核心痛点。<br><br>为此，我从同理心的视角重构了冰冷的急救流程。<span class="data-highlight hover-color-p4 hover-trigger">设计了即时缓解过度呼吸症状的急救硬件</span>，并更为关键地<span class="data-highlight hover-color-p4 hover-trigger">配套开发了软性情绪记录APP</span>。通过引导患者在病后复盘与记录发病诱因，<span class="data-highlight hover-color-p4 hover-trigger">打造一条从生理救援到心理疗愈的闭环生态</span>，以此降低疾病复发率。
+                                </p>
+                            </div>
+                            <div class="space-y-4">
+                                <h4 class="text-lg font-bold text-gray-900">核心工作 Role</h4>
+                                <ul class="text-sm text-gray-600 space-y-2 list-disc pl-4">
+                                    <li><span class="font-bold text-gray-800">痛点溯源：</span>跨越表层病理现象，洞察到“情绪调理缺失”的核心痛点。</li>
+                                    <li><span class="font-bold text-gray-800">硬件设计：</span>主导急救装置的人机工学与物理外观设计，确保紧急可用性。</li>
+                                    <li><span class="font-bold text-gray-800">交互体验：</span>包揽APP端的UI/UX规划，将生硬的急救转化为<span class="data-highlight hover-color-p4 hover-trigger">温和的心理安抚体验</span>。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-white/50 border border-white p-3 md:p-6 rounded-[2rem] shadow-sm relative min-h-[30vh]">
+                        <div class="w-full flex flex-col overflow-hidden rounded-[1rem] md:rounded-[1.25rem] bg-white relative z-10 project-image-group opacity-0 transition-opacity duration-1000">
+                            <!-- 1 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 01</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.1.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 2 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 02</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.2.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 3 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 03</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.3.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 4 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 04</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.4.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 5 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 05</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.5.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 6 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 06</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.6.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 7 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 07</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.7.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 8 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 08</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.8.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 9 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 09</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.9.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 10 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 10</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.10.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 11 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 11</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.11.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 12 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 12</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.12.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                            <!-- 13 -->
+                            <div class="img-wrapper relative w-full min-h-[25vh] bg-[#f4f6f9] flex items-center justify-center -mt-[1px] first:mt-0 border-b border-white/30">
+                                <div class="spinner-container absolute flex flex-col items-center justify-center text-[#d4af37] transition-opacity duration-500">
+                                    <svg class="animate-spin h-6 w-6 mb-2 opacity-80" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                    <span class="text-[10px] font-bold tracking-widest opacity-80">LOADING 13</span>
+                                </div>
+                                <img data-src="https://fastly.jsdelivr.net/gh/hzzz020415-hue/hzzz-@main/4.13.png" class="seamless-slice opacity-0 transition-opacity duration-700 relative z-10" alt="详情图">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="py-16 w-full flex justify-between items-center border-t border-gray-200 mt-12">
+                        <button onclick="switchProject('modal-project-4', 'modal-project-3')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#d4af37] transition flex items-center group hover-trigger">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg> PREV PROJECT
+                        </button>
+                        <button onclick="switchProject('modal-project-4', 'modal-project-1')" class="text-sm font-bold tracking-widest text-gray-500 hover:text-[#d4af37] transition flex items-center group hover-trigger">
+                            NEXT PROJECT <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-2 transform group-hover:translate-x-1 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ✨ AI 数字分身聊天窗口 -->
+    <button id="ai-toggle-btn" class="fixed bottom-8 right-8 z-50 glass-nav text-black px-6 py-3 hover-trigger shadow-xl font-bold tracking-widest flex items-center space-x-2 transition-transform duration-300 hover:scale-105">
+        <span class="text-lg">✨</span>
+        <span class="text-sm">AI 助理</span>
+    </button>
+
+    <div id="ai-chat-window" class="ai-chat-window glass-card flex flex-col overflow-hidden shadow-2xl">
+        <div class="bg-white/60 border-b border-white px-5 py-4 flex justify-between items-center backdrop-blur-md">
+            <div>
+                <h3 class="font-bold text-sm text-gray-900">ZUOZHENZI 的 AI 分身</h3>
+                <p class="text-xs text-gray-500 font-medium">随时为您解答简历问题</p>
+            </div>
+            <button id="ai-close-btn" class="text-gray-500 hover:text-black hover:bg-white/50 w-8 h-8 rounded-full transition flex items-center justify-center hover-trigger">✕</button>
+        </div>
+        
+        <div id="ai-chat-messages" class="flex-1 overflow-y-auto p-5 flex flex-col hide-scrollbar bg-white/20">
+            <div class="chat-message ai">
+                你好！我是候选人的 AI 数字分身。✨<br><br>你可以问我关于她在项目中的任何问题。请问你想了解什么？
+            </div>
+        </div>
+        
+        <div class="p-4 bg-white/60 border-t border-white flex items-center backdrop-blur-md">
+            <input type="text" id="ai-chat-input" class="flex-1 bg-white/80 border border-white rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="Ask me anything...">
+            <button id="ai-send-btn" class="ml-3 bg-[#1F53FF] text-white p-2 rounded-full w-9 h-9 flex items-center justify-center hover:bg-blue-600 transition hover-trigger shadow-md">
+                ↑
+            </button>
+        </div>
+    </div>
+
+    <!-- ✨ 核心脚本系统 ✨ -->
+    <script>
+        document.addEventListener("DOMContentLoaded", (event) => {
+            gsap.registerPlugin();
+
+            // ================= 光标跟随系统 =================
+            const cursor = document.getElementById('custom-cursor');
+            let mouseX = 0, mouseY = 0;
+            
+            // GSAP 顺滑跟随
+            let xTo = gsap.quickTo(cursor, "left", {duration: 0.2, ease: "power3"}),
+                yTo = gsap.quickTo(cursor, "top", {duration: 0.2, ease: "power3"});
+
+            window.addEventListener("mousemove", e => {
+                mouseX = e.clientX; mouseY = e.clientY;
+                xTo(mouseX); yTo(mouseY);
+            });
+
+            // 基础全局悬停
+            const hoverTriggers = document.querySelectorAll('.hover-trigger');
+            hoverTriggers.forEach(trigger => {
+                trigger.addEventListener('mouseenter', () => cursor.classList.add('hover-focus'));
+                trigger.addEventListener('mouseleave', () => cursor.classList.remove('hover-focus'));
+            });
+
+            const glassTriggers = document.querySelectorAll('.hover-glass-trigger');
+            glassTriggers.forEach(trigger => {
+                trigger.addEventListener('mouseenter', () => cursor.classList.add('hover-focus'));
+                trigger.addEventListener('mouseleave', () => cursor.classList.remove('hover-focus'));
+            });
+
+            const textTriggers = document.querySelectorAll('.text-trigger');
+            textTriggers.forEach(trigger => {
+                trigger.addEventListener('mouseenter', () => cursor.classList.add('text-focus'));
+                trigger.addEventListener('mouseleave', () => cursor.classList.remove('text-focus'));
+            });
+
+            // ================= 3D 悬浮卡片 =================
+            const applyTilt = (elementId, intensity) => {
+                const el = document.getElementById(elementId);
+                if(!el) return;
+                el.addEventListener('mousemove', (e) => {
+                    const rect = el.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const rotateX = ((y - rect.height / 2) / intensity) * -1;
+                    const rotateY = (x - rect.width / 2) / intensity;
+                    gsap.to(el, { rotationX: rotateX, rotationY: rotateY, duration: 0.5, ease: "power2.out", transformPerspective: 1000 });
+                });
+                el.addEventListener('mouseleave', () => {
+                    gsap.to(el, { rotationX: 0, rotationY: 0, duration: 0.5, ease: "power2.out" });
+                });
+            }
+            applyTilt('profile-card', 15);
+
+            // ================= 画廊横向滚动 =================
+            const gallerySection = document.getElementById('gallery');
+            const galleryTrack = document.getElementById('gallery-track');
+            if (gallerySection && galleryTrack) {
+                gallerySection.addEventListener('mousemove', (e) => {
+                    const screenWidth = window.innerWidth;
+                    const trackWidth = galleryTrack.scrollWidth;
+                    if (trackWidth <= screenWidth) return;
+                    const mousePercentage = e.clientX / screenWidth;
+                    const maxTranslate = trackWidth - screenWidth + (screenWidth * 0.15); 
+                    const translateValue = -(mousePercentage * maxTranslate);
+                    gsap.to(galleryTrack, { x: translateValue, duration: 1.5, ease: "power2.out" });
+                });
+            }
+
+            // ================= ✨ 首页首屏预览图防裂图系统 ✨ =================
+            const previewImages = document.querySelectorAll('.preview-img, #profile-card img');
+            previewImages.forEach(img => {
+                const reveal = () => {
+                    img.classList.remove('opacity-0');
+                    if (img.parentElement) {
+                        const loader = img.parentElement.querySelector('.preview-loader');
+                        if (loader) {
+                            loader.style.opacity = '0';
+                            setTimeout(() => loader.remove(), 500);
+                        }
+                    }
+                };
+                
+                if (img.complete && img.naturalWidth > 0) {
+                    reveal();
+                } else if (!img.complete) {
+                    img.addEventListener('load', reveal);
+                    img.addEventListener('error', () => {
+                        setTimeout(() => {
+                            if (img.src) {
+                                const currentSrc = img.src.split('?')[0];
+                                img.src = currentSrc + '?retry=' + new Date().getTime();
+                            }
+                        }, 3000);
+                    });
+                }
+            });
+        });
+
+        // ================= ✨ 并发长图骨架阵列下载引擎 ✨ =================
+        function loadModalImages(modal) {
+            if (!modal) return;
+            const imageGroup = modal.querySelector('.project-image-group');
+            if (!imageGroup) return;
+            
+            const images = Array.from(imageGroup.querySelectorAll('img[data-src]'));
+            if (images.length === 0) return;
+
+            // 瞬间解除父容器隐身，暴露所有骨架占位屏
+            imageGroup.classList.remove('opacity-0'); 
+
+            // 全并发执行所有切片下载请求
+            images.forEach((img) => {
+                const wrapper = img.closest('.img-wrapper');
+                const spinner = wrapper ? wrapper.querySelector('.spinner-container') : null;
+
+                const handleImageDone = (isSuccess) => {
+                    if (isSuccess) {
+                        img.classList.remove('opacity-0');
+                    }
+                    if (wrapper && wrapper.style) {
+                        wrapper.style.minHeight = '0'; 
+                    }
+                    if (spinner) {
+                        spinner.style.opacity = '0';
+                        setTimeout(() => spinner.remove(), 500);
+                    }
+                };
+
+                let errorRetries = 0;
+                img.addEventListener('load', () => handleImageDone(true));
+                
+                img.addEventListener('error', () => {
+                    if (errorRetries < 2) {
+                        errorRetries++;
+                        setTimeout(() => {
+                            if (img.dataset.src) {
+                                const baseSrc = img.dataset.src.split('?')[0];
+                                img.src = baseSrc + '?r=' + new Date().getTime();
+                            }
+                        }, 2000);
+                    } else {
+                        handleImageDone(false); 
+                    }
+                });
+
+                if (img.dataset.src) {
+                    img.src = img.dataset.src; 
+                    img.removeAttribute('data-src');
+                }
+            });
+        }
+
+        // ================= ✨ 弹窗防崩溃安全交互 ✨ =================
+        function openProject(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return; // 【防御盾1：防止DOM丢失崩溃】
+            
+            document.body.style.overflow = 'hidden';
+            
+            modal.style.display = 'block'; 
+            setTimeout(() => { modal.classList.add('modal-active'); }, 10); 
+            
+            const loader = modal.querySelector('.modal-loader');
+            const progressBar = modal.querySelector('.loading-progress');
+            const contentArea = modal.querySelector('.modal-content-area');
+            
+            if (loader && loader.style) loader.style.opacity = '1';
+            if (progressBar && progressBar.style) progressBar.style.width = '0%';
+            if (contentArea) {
+                contentArea.classList.remove('opacity-100', 'translate-y-0');
+                contentArea.classList.add('opacity-0', 'translate-y-12');
+            }
+
+            modal.scrollTop = 0;
+            gsap.fromTo(modal, { opacity: 0 }, { opacity: 1, duration: 0.3 });
+            
+            if (progressBar) {
+                gsap.to(progressBar, {
+                    width: '100%', duration: 0.8, ease: "power2.inOut",
+                    onComplete: () => {
+                        if (loader && loader.style) loader.style.opacity = '0';
+                        if (contentArea) {
+                            contentArea.classList.remove('opacity-0', 'translate-y-12');
+                            contentArea.classList.add('opacity-100', 'translate-y-0');
+                        }
+                        loadModalImages(modal);
+                    }
+                });
+            } else {
+                if (contentArea) {
+                    contentArea.classList.remove('opacity-0', 'translate-y-12');
+                    contentArea.classList.add('opacity-100', 'translate-y-0');
+                }
+                loadModalImages(modal);
+            }
+        }
+
+        function switchProject(hideId, showId) {
+            const hideModal = document.getElementById(hideId);
+            const showModal = document.getElementById(showId);
+            if (!hideModal || !showModal) return; // 【防御盾2：防止切换DOM丢失崩溃】
+            
+            showModal.scrollTop = 0;
+            if (showModal.style) showModal.style.zIndex = "105"; 
+            if (showModal.style) showModal.style.display = 'block'; 
+            setTimeout(() => { showModal.classList.add('modal-active'); }, 10);
+            
+            const loader = showModal.querySelector('.modal-loader');
+            const progressBar = showModal.querySelector('.loading-progress');
+            const contentArea = showModal.querySelector('.modal-content-area');
+            
+            if (loader && loader.style) loader.style.opacity = '1';
+            if (progressBar && progressBar.style) progressBar.style.width = '0%';
+            if (contentArea) {
+                contentArea.classList.remove('opacity-100', 'translate-y-0');
+                contentArea.classList.add('opacity-0', 'translate-y-12');
+            }
+
+            gsap.fromTo(showModal, { opacity: 0 }, { opacity: 1, duration: 0.4 });
+            
+            if (progressBar) {
+                gsap.to(progressBar, {
+                    width: '100%', duration: 0.6, delay: 0.2, ease: "power2.inOut",
+                    onComplete: () => {
+                        if (loader && loader.style) loader.style.opacity = '0';
+                        if (contentArea) {
+                            contentArea.classList.remove('opacity-0', 'translate-y-12');
+                            contentArea.classList.add('opacity-100', 'translate-y-0');
+                        }
+                        
+                        hideModal.classList.remove('modal-active');
+                        if (hideModal.style) {
+                            hideModal.style.opacity = '0';
+                            hideModal.style.display = 'none';
+                        }
+                        if (showModal.style) showModal.style.zIndex = ""; 
+                        
+                        loadModalImages(showModal);
+                    }
+                });
+            } else {
+                hideModal.classList.remove('modal-active');
+                if (hideModal.style) hideModal.style.display = 'none';
+                loadModalImages(showModal);
+            }
+        }
+
+        function closeProject(modalId) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            gsap.to(modal, { 
+                opacity: 0, duration: 0.3, ease: "power3.inOut",
+                onComplete: () => {
+                    modal.classList.remove('modal-active');
+                    if (modal.style) modal.style.display = 'none'; 
+                    document.body.style.overflow = '';
+                }
+            });
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === "Escape") {
+                const activeModals = Array.from(document.querySelectorAll('.project-modal')).filter(m => m.style && m.style.display === 'block');
+                if (activeModals.length > 0) closeProject(activeModals[0].id);
+            }
+        });
+
+        // ================= AI 对话系统 =================
+        const apiKey = ""; 
+        const toggleBtn = document.getElementById('ai-toggle-btn');
+        const chatWindow = document.getElementById('ai-chat-window');
+        const closeBtn = document.getElementById('ai-close-btn');
+        const chatInput = document.getElementById('ai-chat-input');
+        const sendBtn = document.getElementById('ai-send-btn');
+        const messagesContainer = document.getElementById('ai-chat-messages');
+
+        let chatHistory = [];
+        let isChatOpen = false;
+
+        const systemInstruction = {
+            parts: [{
+                text: "你是求职者ZUOZHENZI HUANG的AI数字分身。你拥有工业设计背景，正在求职产品策划/PM岗位。你的核心能力包括：1. 宏观统筹与复杂业务梳理（代表项目：广汽GOVE智慧出行，担任大组长，规划购买/租赁等商业模式）；2. 敏锐的商业嗅觉与0-1落地（代表项目：棉花娃娃产品线企划，首创现货模式，92w销售额）；3. 数据驱动的网感运营（代表项目：多平台自媒体矩阵，爆款67w浏览）；4. 软硬件结合的产品体验设计（代表项目：呼吸碱中毒急救装置与情绪APP）。请以自信、专业、简练的产品经理口吻回答面试官的问题。每次回答控制在100字以内，展现出优秀的逻辑思维。"
+            }]
+        };
+
+        const toggleChat = () => {
+            isChatOpen = !isChatOpen;
+            if (isChatOpen) {
+                if (chatWindow) chatWindow.classList.add('active');
+                if (chatInput) chatInput.focus();
+                document.body.classList.add('show-native-cursor');
+                const cursorEl = document.getElementById('custom-cursor');
+                if (cursorEl && cursorEl.style) cursorEl.style.display = 'none';
+            } else {
+                if (chatWindow) chatWindow.classList.remove('active');
+                document.body.classList.remove('show-native-cursor');
+                const cursorEl = document.getElementById('custom-cursor');
+                if (cursorEl && cursorEl.style) cursorEl.style.display = 'block';
+            }
+        };
+
+        if (toggleBtn) toggleBtn.addEventListener('click', toggleChat);
+        if (closeBtn) closeBtn.addEventListener('click', toggleChat);
+
+        const appendMessage = (text, sender) => {
+            if (!messagesContainer) return;
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `chat-message ${sender}`;
+            msgDiv.innerHTML = text; 
+            messagesContainer.appendChild(msgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+
+        const showTypingIndicator = () => {
+            if (!messagesContainer) return;
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.id = 'typing-indicator';
+            indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+            messagesContainer.appendChild(indicator);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+
+        const removeTypingIndicator = () => {
+            const indicator = document.getElementById('typing-indicator');
+            if (indicator) indicator.remove();
+        };
+
+        const fetchGeminiResponse = async (userText) => {
+            chatHistory.push({ role: "user", parts: [{ text: userText }] });
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { systemInstruction: systemInstruction, contents: chatHistory };
+
+            let retries = 5; let delay = 1000;
+            while (retries > 0) {
+                try {
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error("API Fetch Error");
+                    const data = await response.json();
+                    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，我的思维网络遇到了一点波动。";
+                    chatHistory.push({ role: "model", parts: [{ text: replyText }] });
+                    return replyText;
+                } catch (error) {
+                    retries--;
+                    if (retries === 0) return "网络连接似乎不太稳定，请稍后再试。";
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2; 
+                }
+            }
+        };
+
+        const handleSend = async () => {
+            if (!chatInput) return;
+            const text = chatInput.value.trim();
+            if (!text) return;
+            appendMessage(text, 'user');
+            chatInput.value = '';
+            showTypingIndicator();
+            const responseText = await fetchGeminiResponse(text);
+            removeTypingIndicator();
+            const formattedText = responseText.replace(/\n/g, '<br>');
+            appendMessage(formattedText, 'ai');
+        };
+
+        if (sendBtn) sendBtn.addEventListener('click', handleSend);
+        if (chatInput) chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+    </script>
+</body>
+</html>
